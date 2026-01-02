@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ワンちゃんよけよけゲーム</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            text-align: center;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding-top: 10px;
+            /* スマホでタップした時の青い枠を消す */
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+
+        /* キャラ選択画面 */
+        #selection-screen {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: inline-block;
+            margin: 20px;
+            max-width: 90%;
+        }
+        .char-option {
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            margin: 5px;
+            border: 3px solid transparent;
+            border-radius: 10px;
+            transition: 0.2s;
+        }
+
+        /* ゲーム画面（最初は隠しておく） */
+        #game-area {
+            display: none;
+            touch-action: manipulation; /* 連打してもズームせえへんようにする */
+        }
+
+        #dog-butt-container {
+            width: 100px;
+            height: 80px;
+            margin: 0 auto -5px;
+            position: relative;
+            z-index: 10;
+        }
+        #dog-butt {
+            width: 100%;
+            height: auto;
+            animation: butt-wiggle 0.5s infinite alternate ease-in-out;
+            transform-origin: top center;
+        }
+        @keyframes butt-wiggle {
+            0% { transform: rotate(-10deg); }
+            100% { transform: rotate(10deg); }
+        }
+
+        #game-container {
+            width: 300px;
+            height: 450px; /* スマホで見やすいように少し高さを調整 */
+            background-color: #e0f0e0;
+            position: relative;
+            margin: 0 auto;
+            overflow: hidden;
+            border: 6px solid #8b4513;
+            border-radius: 10px;
+        }
+
+        #player {
+            width: 60px;
+            height: 60px;
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            transition: left 0.1s;
+            z-index: 5;
+        }
+
+        .object {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            text-align: center;
+            line-height: 60px;
+            font-size: 40px;
+        }
+        h1 { color: #5d4037; margin: 0; font-size: 20px; }
+        p { color: #795548; font-size: 14px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+
+    <div id="selection-screen">
+        <h1>キャラを選んでな！</h1>
+        <div id="options">
+            <img src="player1.png" class="char-option" onclick="startGame('player1.png')">
+            <img src="player2.png" class="char-option" onclick="startGame('player2.png')">
+            <img src="player3.png" class="char-option" onclick="startGame('player3.png')">
+            <img src="player4.png" class="char-option" onclick="startGame('player4.png')">
+            <img src="player5.png" class="char-option" onclick="startGame('player5.png')">
+        </div>
+    </div>
+
+    <div id="game-area">
+        <div class="header">
+            <h1>スコア: <span id="score">0</span></h1>
+            <p>画面の左右をタップして移動！</p>
+        </div>
+
+        <div id="dog-butt-container">
+            <img id="dog-butt" src="dog.png" alt="ぷりぷりワンコ">
+        </div>
+
+        <div id="game-container">
+            <img id="player" src="" alt="プレイヤー">
+        </div>
+    </div>
+
+    <script>
+        const selectionScreen = document.getElementById('selection-screen');
+        const gameArea = document.getElementById('game-area');
+        const container = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreElement = document.getElementById('score');
+        
+        let score = 0;
+        let playerLane = 0; 
+        const lanes = [20, 120, 220];
+        let isGameOver = false;
+        let gameStarted = false;
+
+        function startGame(imgSrc) {
+            player.src = imgSrc;
+            selectionScreen.style.display = 'none';
+            gameArea.style.display = 'block';
+            gameStarted = true;
+            setInterval(createObject, 1000);
+        }
+
+        // キーボード操作
+        document.addEventListener('keydown', (e) => {
+            if (!gameStarted || isGameOver) return;
+            if (e.key === 'ArrowLeft') movePlayer(-1);
+            if (e.key === 'ArrowRight') movePlayer(1);
+        });
+
+        // スマホ用：画面タップ操作
+        document.addEventListener('touchstart', (e) => {
+            if (!gameStarted || isGameOver) return;
+            const touchX = e.touches[0].clientX;
+            const screenWidth = window.innerWidth;
+            
+            if (touchX < screenWidth / 2) {
+                movePlayer(-1); // 画面左側タップ
+            } else {
+                movePlayer(1);  // 画面右側タップ
+            }
+        });
+
+        function movePlayer(dir) {
+            if (dir === -1 && playerLane > 0) playerLane--;
+            if (dir === 1 && playerLane < 2) playerLane++;
+            player.style.left = lanes[playerLane] + 'px';
+        }
+
+        function createObject() {
+            if (isGameOver) return;
+
+            const obj = document.createElement('div');
+            obj.className = 'object';
+            const lane = Math.floor(Math.random() * 3);
+            const isHeart = Math.random() > 0.8;
+
+            obj.innerText = isHeart ? '❤️' : '💩';
+            obj.dataset.type = isHeart ? 'heart' : 'poop';
+            obj.style.left = lanes[lane] + 'px';
+            obj.style.top = '-60px';
+            container.appendChild(obj);
+
+            let top = -60;
+            const interval = setInterval(() => {
+                if (isGameOver) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                top += 5;
+                obj.style.top = top + 'px';
+
+                if (top > 370 && top < 430 && lane === playerLane) {
+                    if (obj.dataset.type === 'poop') {
+                        isGameOver = true;
+                        setTimeout(() => {
+                            alert('あちゃ〜！💩ふんじゃった！ スコア: ' + score);
+                            location.reload();
+                        }, 10);
+                        clearInterval(interval);
+                    } else {
+                        score += 100;
+                        scoreElement.innerText = score;
+                        obj.remove();
+                        clearInterval(interval);
+                    }
+                }
+
+                if (top > 500) {
+                    obj.remove();
+                    clearInterval(interval);
+                }
+            }, 20);
+        }
+    </script>
+</body>
+</html>
